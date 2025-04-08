@@ -43,6 +43,9 @@ interface TickerOption {
   region: string;
 }
 
+const API_BASE = process.env.REACT_APP_API_BASE ||
+  (process.env.NODE_ENV === 'development' ? 'http://localhost:8001' : '/api');
+
 const App: React.FC = () => {
   const [stockData, setStockData] = useState<StockData[]>([]);
   const [symbol, setSymbol] = useState('AAPL');
@@ -56,7 +59,7 @@ const App: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(() => {
       if (searchQuery.length > 1) {
-        axios.get(`http://localhost:8001/api/search-tickers?query=${searchQuery}`)
+        axios.get(`${API_BASE}/search-tickers?query=${searchQuery}`)
           .then(response => setTickerOptions(response.data))
           .catch(console.error);
       }
@@ -69,7 +72,7 @@ const App: React.FC = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await axios.get(`http://localhost:8001/api/stocks/${symbol}`);
+      const response = await axios.get(`${API_BASE}/stocks/${symbol}`);
       setStockData(response.data.data || []);
     } catch (err) {
       setError('Ошибка загрузки данных');
