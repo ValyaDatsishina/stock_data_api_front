@@ -1,0 +1,125 @@
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import {
+  Card,
+  CardContent,
+  TextField,
+  Button,
+  Grid,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper
+} from '@mui/material';
+
+interface DataItem {
+  id: number;
+  title: string;
+  body?: string;
+  userId?: number;
+  [key: string]: any; // Для других возможных полей
+}
+
+const DataDisplay: React.FC = () => {
+  const [data, setData] = useState<DataItem[]>([]);
+  const [filter, setFilter] = useState('');
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+
+  // Загрузка данных
+  const fetchData = async () => {
+    try {
+      const response = await axios.get('https://jsonplaceholder.typicode.com/posts');
+      setData(response.data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Фильтрация данных
+  const filteredData = data.filter(item =>
+    item.title.toLowerCase().includes(filter.toLowerCase()) ||
+    (item.body && item.body.toLowerCase().includes(filter.toLowerCase()))
+  );
+
+  return (
+    <div style={{ padding: 20 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+        <TextField
+          label="Фильтр"
+          variant="outlined"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          fullWidth
+        />
+        <Button
+          variant="contained"
+          onClick={fetchData}
+          style={{ minWidth: 120 }}
+        >
+          Обновить
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={() => setViewMode(viewMode === 'cards' ? 'table' : 'cards')}
+        >
+          {viewMode === 'cards' ? 'Таблица' : 'Карточки'}
+        </Button>
+      </div>
+
+      {viewMode === 'cards' ? (
+        <Grid container spacing={3}>
+          {filteredData.map((item) => (
+            <Grid item xs={12} sm={6} md={4} key={item.id}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6">{item.title}</Typography>
+                  {item.body && (
+                    <Typography variant="body2" color="text.secondary">
+                      {item.body}
+                    </Typography>
+                  )}
+                  {item.userId && (
+                    <Typography variant="caption">User ID: {item.userId}</Typography>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      ) : (
+        <TableContainer component={Paper}>
+          <Table>
+            <TableHead>
+              <TableRow>
+                <TableCell>ID</TableCell>
+                <TableCell>Title</TableCell>
+                <TableCell>Body</TableCell>
+                <TableCell>User ID</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredData.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell>{item.id}</TableCell>
+                  <TableCell>{item.title}</TableCell>
+                  <TableCell>{item.body}</TableCell>
+                  <TableCell>{item.userId}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
+    </div>
+  );
+};
+
+export default DataDisplay;
