@@ -21,7 +21,7 @@ interface DataItem {
   title: string;
   body?: string;
   userId?: number;
-  [key: string]: any; // Для других возможных полей
+  [key: string]: any;
 }
 
 const DataDisplay: React.FC = () => {

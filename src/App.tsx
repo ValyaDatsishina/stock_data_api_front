@@ -17,13 +17,15 @@ import {
   Typography,
   CircularProgress,
   Grid,
-  Box
+  Box,
+  Autocomplete,
+  ListItem,
+  ListItemText
 } from '@mui/material';
 import { DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { format } from 'date-fns';
-
 
 interface StockData {
   date: string;
@@ -34,6 +36,13 @@ interface StockData {
   volume: number;
 }
 
+interface TickerOption {
+  symbol: string;
+  name: string;
+  type: string;
+  region: string;
+}
+
 const App: React.FC = () => {
   const [stockData, setStockData] = useState<StockData[]>([]);
   const [symbol, setSymbol] = useState('IBM');
@@ -41,6 +50,20 @@ const App: React.FC = () => {
   const [endDate, setEndDate] = useState<Date | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [tickerOptions, setTickerOptions] = useState<TickerOption[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (searchQuery.length > 1) {
+        axios.get(`http://localhost:8000/api/search-tickers?query=${searchQuery}`)
+          .then(response => setTickerOptions(response.data))
+          .catch(console.error);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   const fetchStockData = async () => {
     try {
@@ -65,8 +88,10 @@ const App: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchStockData();
-  }, []);
+    if (symbol) {
+      fetchStockData();
+    }
+  }, [symbol]);
 
   return (
     <LocalizationProvider dateAdapter={AdapterDateFns}>
@@ -75,21 +100,48 @@ const App: React.FC = () => {
           Анализ акций {symbol}
         </Typography>
 
-        <Grid container spacing={3} sx={{ mb: 4 }}>
+        {/* Автокомплит */}
+        <Grid container spacing={3} sx={{ mb: 4 }} alignItems="center">
           <Grid item xs={12} md={4}>
-            <TextField
-              label="Тикер"
-              variant="outlined"
-              value={symbol}
-              onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-              fullWidth
+            <Autocomplete
+              freeSolo
+              options={tickerOptions}
+              getOptionLabel={(option) =>
+                typeof option === 'string' ? option : `${option.symbol} - ${option.name}`
+              }
+              inputValue={searchQuery}
+              onInputChange={(_, newValue) => {
+                setSearchQuery(newValue);
+              }}
+              onChange={(_, newValue) => {
+                if (newValue && typeof newValue !== 'string') {
+                  setSymbol(newValue.symbol);
+                }
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Поиск акций"
+                  variant="outlined"
+                  fullWidth
+                />
+              )}
+              renderOption={(props, option) => (
+                <ListItem {...props} key={option.symbol}>
+                  <ListItemText
+                    primary={`${option.symbol} - ${option.name}`}
+                    secondary={`${option.type} • ${option.region}`}
+                  />
+                </ListItem>
+              )}
             />
           </Grid>
+
           <Grid item xs={6} md={3}>
             <DatePicker
               label="Начальная дата"
               value={startDate}
-              onChange={(newValue) => setStartDate(newValue)}
+              onChange={(newValue: Date | null) => setStartDate(newValue)}
               maxDate={endDate || new Date()}
               slotProps={{ textField: { fullWidth: true } }}
             />
@@ -98,7 +150,7 @@ const App: React.FC = () => {
             <DatePicker
               label="Конечная дата"
               value={endDate}
-              onChange={(newValue) => setEndDate(newValue)}
+              onChange={(newValue: Date | null) => setEndDate(newValue)}
               minDate={startDate || undefined}
               maxDate={new Date()}
               slotProps={{ textField: { fullWidth: true } }}
@@ -123,6 +175,7 @@ const App: React.FC = () => {
           </Typography>
         )}
 
+        {/* График */}
         <Box sx={{ height: 400, mb: 4 }}>
           <Typography variant="h6" gutterBottom>
             График цен закрытия
@@ -132,12 +185,12 @@ const App: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="date"
-                tickFormatter={(date) => format(new Date(date), 'dd.MM.yy')}
+                tickFormatter={(date: string) => format(new Date(date), 'dd.MM.yy')}
               />
               <YAxis />
               <Tooltip
-                labelFormatter={(value) => format(new Date(value), 'dd.MM.yyyy')}
-                formatter={(value) => [`$${Number(value).toFixed(2)}`, 'Цена']}
+                labelFormatter={(value: string) => format(new Date(value), 'dd.MM.yyyy')}
+                formatter={(value: number) => [`$${Number(value).toFixed(2)}`, 'Цена']}
               />
               <Legend />
               <Line
@@ -151,6 +204,7 @@ const App: React.FC = () => {
           </ResponsiveContainer>
         </Box>
 
+        {/* Таблица */}
         <Typography variant="h6" gutterBottom>
           Исторические данные
         </Typography>
